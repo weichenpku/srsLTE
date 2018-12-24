@@ -71,6 +71,7 @@ int srslte_ofdm_init_mbsfn_(srslte_ofdm_t *q, srslte_cp_t cp, cf_t *in_buffer, c
     return -1;
   }
   bzero(q->tmp, sizeof(cf_t) * symbol_sz);
+  //printf("AVOID_GURU\n");
 #else
   int cp1 = SRSLTE_CP_ISNORM(cp)?SRSLTE_CP_LEN_NORM(0, symbol_sz):SRSLTE_CP_LEN_EXT(symbol_sz);
   int cp2 = SRSLTE_CP_ISNORM(cp)?SRSLTE_CP_LEN_NORM(1, symbol_sz):SRSLTE_CP_LEN_EXT(symbol_sz);
@@ -83,10 +84,13 @@ int srslte_ofdm_init_mbsfn_(srslte_ofdm_t *q, srslte_cp_t cp, cf_t *in_buffer, c
   bzero(q->tmp, sizeof(cf_t) * q->sf_sz);
 
   if (dir == SRSLTE_DFT_BACKWARD) {
+    //printf("zeros %d\n",sizeof(cf_t) * SRSLTE_SF_LEN_RE(nof_prb, cp));
     bzero(in_buffer, sizeof(cf_t) * SRSLTE_SF_LEN_RE(nof_prb, cp));
   }else {
+    //printf("zeros %d\n",sizeof(cf_t) *q->sf_sz);
     bzero(in_buffer, sizeof(cf_t) * q->sf_sz);
   }
+
 
   for (int slot = 0; slot < 2; slot++) {
     //bzero(&q->fft_plan_sf[slot], sizeof(srslte_dft_plan_t));

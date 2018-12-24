@@ -240,9 +240,10 @@ int main(int argc, char **argv) {
     }
 
   INFO("Stopping RF and flushing buffer...\n");
-  srslte_rf_stop_rx_stream(&rf);
-  srslte_rf_flush_buffer(&rf);
+  srslte_rf_stop_rx_stream(&rf); 
+  //srslte_rf_flush_buffer(&rf);
   
+  printf("Ue sync initiating...\n");
   if (srslte_ue_sync_init_multi(&ue_sync, cell.nof_prb, cell.id==1000, srslte_rf_recv_wrapper, 1, (void*) &rf)) {
     fprintf(stderr, "Error initiating ue_sync\n");
     return -1; 
@@ -251,6 +252,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Error initiating ue_sync\n");
     return -1;
   }
+  printf("Ue downlink initiating...\n");
   if (srslte_ue_dl_init(&ue_dl, sf_buffer, cell.nof_prb, 1)) {
     fprintf(stderr, "Error initiating UE downlink processing module\n");
     return -1;
@@ -259,6 +261,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Error initiating UE downlink processing module\n");
     return -1;
   }
+
+  printf("Ue mib initiating...\n");
   if (srslte_ue_mib_init(&ue_mib, sf_buffer, cell.nof_prb)) {
     fprintf(stderr, "Error initaiting UE MIB decoder\n");
     return -1;
@@ -286,6 +290,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Error initiating FFT\n");
     return -1;
   }
+
+
+  printf("channel estimator initiating...\n");
   if (srslte_chest_dl_init(&chest, cell.nof_prb)) {
     fprintf(stderr, "Error initiating channel estimator\n");
     return -1;
@@ -299,6 +306,8 @@ int main(int argc, char **argv) {
   
   float rx_gain_offset = 0;
 
+  printf("*********************\n");
+  printf("Starting measuring...\n");
   /* Main loop */
   while ((sf_cnt < prog_args.nof_subframes || prog_args.nof_subframes == -1) && !go_exit) {
     
@@ -307,11 +316,13 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Error calling srslte_ue_sync_work()\n");
     }
 
-        
+    rx_gain_offset = srslte_rf_get_rx_gain(&rf);
+    printf("Rx gain is %f dB\n",rx_gain_offset);    
     /* srslte_ue_sync_get_buffer returns 1 if successfully read 1 aligned subframe */
     if (ret == 1) {
       switch (state) {
         case DECODE_MIB:
+          printf("Decode MIB:\n");
           if (srslte_ue_sync_get_sfidx(&ue_sync) == 0) {
             srslte_pbch_decode_reset(&ue_mib.pbch);
             n = srslte_ue_mib_decode(&ue_mib, bch_payload, NULL, &sfn_offset);
@@ -327,6 +338,7 @@ int main(int argc, char **argv) {
           }
           break;
         case DECODE_SIB:
+          printf("Decode SIB:\n");
           /* We are looking for SI Blocks, search only in appropiate places */
           if ((srslte_ue_sync_get_sfidx(&ue_sync) == 5 && (sfn%2)==0)) {
             n = srslte_ue_dl_decode(&ue_dl, data, 0, sfn*10+srslte_ue_sync_get_sfidx(&ue_sync), acks);
@@ -347,40 +359,55 @@ int main(int argc, char **argv) {
         break;
         
       case MEASURE:
-        
+        printf("Measure cell\n");
         if (srslte_ue_sync_get_sfidx(&ue_sync) == 5) {
           /* Run FFT for all subframe data */
           srslte_ofdm_rx_sf(&fft);
           
           srslte_chest_dl_estimate(&chest, sf_symbols, ce, srslte_ue_sync_get_sfidx(&ue_sync));
-                  
+          for (int i=0;i<100;i++){
+            printf("%f+i*%f\n", (__real__ sf_buffer[0][i]),(__imag__ sf_buffer[0][i]));
+          }        
+          
+          printf("RSSI: %f dBm, RSSI/ref-symbol: %f dBm, RSRP: %f dBm, RSRQ: %f dB, SNR: %f\n",
+                10*log10(srslte_vec_avg_power_cf(sf_buffer[0],SRSLTE_SF_LEN(srslte_symbol_sz(cell.nof_prb)))) - rx_gain_offset,                   
+                10*log10(srslte_chest_dl_get_rssi(&chest)) - rx_gain_offset, 
+                10*log10(srslte_chest_dl_get_rsrq(&chest)) - rx_gain_offset,
+                10*log10(srslte_chest_dl_get_rsrq(&chest)), 
+                10*log10(srslte_chest_dl_get_snr(&chest))); 
+
           rssi = SRSLTE_VEC_EMA(srslte_vec_avg_power_cf(sf_buffer[0],SRSLTE_SF_LEN(srslte_symbol_sz(cell.nof_prb))),rssi,0.05);
           rssi_utra = SRSLTE_VEC_EMA(srslte_chest_dl_get_rssi(&chest),rssi_utra,0.05);
           rsrq = SRSLTE_VEC_EMA(srslte_chest_dl_get_rsrq(&chest),rsrq,0.05);
           rsrp = SRSLTE_VEC_EMA(srslte_chest_dl_get_rsrp(&chest),rsrp,0.05);      
           snr = SRSLTE_VEC_EMA(srslte_chest_dl_get_snr(&chest),snr,0.05);      
-          
+
           nframes++;          
         } 
         
+                 
         
-        if ((nframes%100) == 0 || rx_gain_offset == 0) {
+        
+        /*if ((nframes%100) == 0 || rx_gain_offset == 0) {
           if (srslte_rf_has_rssi(&rf)) {
             rx_gain_offset = 30+10*log10(rssi*1000)-srslte_rf_get_rssi(&rf);
+            printf("get gain from rssi %f %f %f\n",rssi, 30+10*log10(rssi*1000),srslte_rf_get_rssi(&rf));
           } else {
             rx_gain_offset = srslte_rf_get_rx_gain(&rf);            
+            printf("get gain from rx\n");
           }
         }
+        */
         
         // Plot and Printf
         if ((nframes%10) == 0) {
 
-          printf("CFO: %+8.4f kHz, SFO: %+8.4f Hz, RSSI: %5.1f dBm, RSSI/ref-symbol: %+5.1f dBm, "
-                 "RSRP: %+5.1f dBm, RSRQ: %5.1f dB, SNR: %5.1f dB\r",
+          printf("CFO: %f kHz, SFO: %f Hz, RSSI: %f dBm, RSSI/ref-symbol: %f dBm, "
+                 "RSRP: %f dBm, RSRQ: %f dB, SNR: %f dB\n",
                 srslte_ue_sync_get_cfo(&ue_sync)/1000, srslte_ue_sync_get_sfo(&ue_sync), 
-                10*log10(rssi*1000) - rx_gain_offset,                        
-                10*log10(rssi_utra*1000)- rx_gain_offset, 
-                10*log10(rsrp*1000) - rx_gain_offset, 
+                10*log10(rssi) - rx_gain_offset,                        
+                10*log10(rssi_utra)- rx_gain_offset, 
+                10*log10(rsrp) - rx_gain_offset, 
                 10*log10(rsrq), 10*log10(snr));                
           if (srslte_verbose != SRSLTE_VERBOSE_NONE) {
             printf("\n");

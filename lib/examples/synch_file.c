@@ -31,6 +31,7 @@
 #include <sys/time.h>
 
 #include "srslte/srslte.h"
+#include "srslte/phy/utils/debug.h"
 
 char *input_file_name;
 char *output_file_name="abs_corr.txt";
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
    * a) requries more memory but has less latency and is paralellizable.
    */
   for (N_id_2=0;N_id_2<3;N_id_2++) {
-    if (srslte_pss_init(&pss[N_id_2], frame_length)) {
+    if (srslte_pss_init_fft(&pss[N_id_2], frame_length,symbol_sz)) {
       fprintf(stderr, "Error initializing PSS object\n");
       exit(-1);
     }
@@ -171,7 +172,7 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Error initializing N_id_2\n");
       exit(-1);
     }
-    if (srslte_sss_init(&sss[N_id_2], 128)) {
+    if (srslte_sss_init(&sss[N_id_2], symbol_sz)) {
       fprintf(stderr, "Error initializing SSS object\n");
       exit(-1);
     }
@@ -187,11 +188,11 @@ int main(int argc, char **argv) {
   printf("\n\tFr.Cnt\tN_id_2\tN_id_1\tSubf\tPSS Peak/Avg\tIdx\tm0\tm1\tCFO\n");
   printf("\t===============================================================================\n");
 
+
   /* read all file or nof_frames */
   frame_cnt = 0;
   while (frame_length == srslte_filesource_read(&fsrc, input, frame_length)
       && frame_cnt < nof_frames) {
-
     gettimeofday(&tdata[1], NULL);
     if (force_cfo != CFO_AUTO) {
       srslte_cfo_correct(&cfocorr, input, input, force_cfo/128);
@@ -203,6 +204,7 @@ int main(int argc, char **argv) {
     } else {
       for (N_id_2=0;N_id_2<3;N_id_2++) {
         peak_pos[N_id_2] = srslte_pss_find_pss(&pss[N_id_2], input, &peak_value[N_id_2]);
+        INFO("N_id_2: %d, peak_value: %f\n",N_id_2,peak_value[N_id_2]);
       }
       float max_value=-99999;
       N_id_2=-1;
@@ -223,12 +225,12 @@ int main(int argc, char **argv) {
         srslte_sss_m0m1_diff(&sss[N_id_2], &input[sss_idx],
             &m0, &m0_value, &m1, &m1_value);
 
-        cfo[frame_cnt] = srslte_pss_cfo_compute(&pss[N_id_2], &input[peak_pos[N_id_2]-128]);
+        cfo[frame_cnt] = srslte_pss_cfo_compute(&pss[N_id_2], &input[peak_pos[N_id_2]-symbol_sz]);
         printf("\t%d\t%d\t%d\t%d\t%.3f\t\t%3d\t%d\t%d\t%.3f\n",
             frame_cnt,N_id_2, srslte_sss_N_id_1(&sss[N_id_2], m0, m1),
             srslte_sss_subframe(m0, m1), peak_value[N_id_2],
             peak_pos[N_id_2], m0, m1,
-            cfo[frame_cnt]);
+            cfo[frame_cnt]*1000*15);
       }
     }
     gettimeofday(&tdata[2], NULL);

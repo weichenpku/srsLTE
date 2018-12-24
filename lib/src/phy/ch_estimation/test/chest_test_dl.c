@@ -100,6 +100,7 @@ int main(int argc, char **argv) {
   }
 
   num_re = 2 * cell.nof_prb * SRSLTE_NRE * SRSLTE_CP_NSYMB(cell.cp);
+  printf("num_re: %d\n",num_re);
 
   input = srslte_vec_malloc(num_re * sizeof(cf_t));
   if (!input) {
@@ -145,7 +146,8 @@ int main(int argc, char **argv) {
 
         bzero(input, sizeof(cf_t) * num_re);
         for (i=0;i<num_re;i++) {
-          input[i] = 0.5-rand()/RAND_MAX+I*(0.5-rand()/RAND_MAX);
+          input[i] = 0.5-rand()/(RAND_MAX/2)+I*(0.5-rand()/(RAND_MAX/2));
+          printf("%f %f\n",(__real__ input[i]),(__imag__ input[i]));
         }
 
         bzero(ce, sizeof(cf_t) * num_re);
@@ -165,7 +167,8 @@ int main(int argc, char **argv) {
         struct timeval t[3];
         gettimeofday(&t[1], NULL);
         for (int j=0;j<100;j++) {
-          srslte_chest_dl_estimate_port(&est, input, ce, sf_idx, n_port, 0);          
+          srslte_chest_dl_estimate_port(&est, input, ce, sf_idx, n_port, 0); 
+          //printf("%f %f\n",(__real__ ce[0]) ,(__imag__ ce[0]));         
         }
         gettimeofday(&t[2], NULL);
         get_time_interval(t);

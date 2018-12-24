@@ -77,6 +77,15 @@ if(RF_FOUND)
   add_executable(usrp_txrx usrp_txrx.c)
   target_link_libraries(usrp_txrx srslte_phy srslte_rf)
 
+  add_executable(hsr_capture hsr_capture.c)
+  target_link_libraries(hsr_capture srslte_phy srslte_rf)
+
+  add_executable(hsr_sync hsr_sync.c)
+  target_link_libraries(hsr_sync srslte_phy srslte_rf)
+  if(SRSGUI_FOUND)
+    target_link_libraries(hsr_sync ${SRSGUI_LIBRARIES})
+  endif(SRSGUI_FOUND)
+
   message(STATUS "   examples will be installed.")
 
 else(RF_FOUND)

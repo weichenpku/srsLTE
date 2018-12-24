@@ -551,10 +551,10 @@ int srslte_chest_dl_estimate_port(srslte_chest_dl_t *q, cf_t *input, cf_t *ce, u
 {
   uint32_t npilots = SRSLTE_REFSIGNAL_NUM_SF(q->cell.nof_prb, port_id);
 
-  /* Get references from the input signal */
+  /* Get references from the input signal: q->pilot_recv_signal */  
   srslte_refsignal_cs_get_sf(q->cell, port_id, input, q->pilot_recv_signal);
   
-  /* Use the known CSR signal to compute Least-squares estimates */
+  /* Use the known CSR signal to compute Least-squares estimates: q->pilot_estimates */
   srslte_vec_prod_conj_ccc(q->pilot_recv_signal, q->csr_refs.pilots[port_id/2][sf_idx], 
               q->pilot_estimates, npilots);
 

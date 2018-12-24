@@ -37,7 +37,6 @@
 
 #include "srslte/srslte.h"
 #include "srslte/phy/rf/rf.h"
-#include "srslte/phy/utils/debug.h"
 
 static bool keep_running = true;
 char *output_file_name = NULL;
@@ -106,7 +105,6 @@ void parse_args(int argc, char **argv) {
 
 int srslte_rf_recv_wrapper(void *h, cf_t *data[SRSLTE_MAX_PORTS], uint32_t nsamples, srslte_timestamp_t *t) {
   DEBUG(" ----  Receive %d samples  ---- \n", nsamples);
-  printf("recv: %d samples\n",nsamples);
   return srslte_rf_recv_with_time_multi(h, (void**) data, nsamples, true, NULL, NULL);
 }
 
@@ -193,14 +191,9 @@ int main(int argc, char **argv) {
           start_capture = true; 
         }        
       } else {
-        int ret = srslte_sync_get_cell_id(&ue_sync.strack);
-        
-          printf("Cellid is %d\n",ret);
-        
-          printf("Writing to file %6d subframes...\n", subframe_count);
-          srslte_filesink_write_multi(&sink, (void**) buffer, SRSLTE_SF_LEN_PRB(nof_prb),nof_rx_antennas);
-          subframe_count++;        
-                           
+        printf("Writing to file %6d subframes...\r", subframe_count);
+        srslte_filesink_write_multi(&sink, (void**) buffer, SRSLTE_SF_LEN_PRB(nof_prb),nof_rx_antennas);
+        subframe_count++;                              
       }      
     }
     if (!keep_running) {
@@ -208,7 +201,6 @@ int main(int argc, char **argv) {
         stop_capture = true; 
       }
     }
-    printf("\n");
   }
   
   srslte_filesink_free(&sink);

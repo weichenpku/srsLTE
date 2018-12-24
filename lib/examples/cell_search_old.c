@@ -71,7 +71,7 @@ struct cells {
 };
 struct cells results[1024]; 
 
-float rf_gain = 30.0;
+float rf_gain = 70.0;
 char *rf_args=""; 
 
 void usage(char *prog) {
@@ -152,11 +152,11 @@ int main(int argc, char **argv) {
   srslte_earfcn_t channels[MAX_EARFCN];
   uint32_t freq;
   uint32_t n_found_cells=0;
-
+  
   srslte_debug_handle_crash(argc, argv);
 
   parse_args(argc, argv);
-  
+    
   printf("Opening RF device...\n");
   if (srslte_rf_open(&rf, rf_args)) {
     fprintf(stderr, "Error opening rf\n");
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
            results[i].cell.id, 
            results[i].cell.nof_prb, 
            results[i].cell.nof_ports, 
-           10*log10(results[i].power)-rf_gain);
+           10*log10(results[i].power));
 
   }
   

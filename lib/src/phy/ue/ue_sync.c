@@ -657,6 +657,7 @@ static int receive_samples(srslte_ue_sync_t *q, cf_t *input_buffer[SRSLTE_MAX_PO
   for (int i=0;i<q->nof_rx_antennas;i++) {
     ptr[i] = &input_buffer[i][q->next_rf_sample_offset];
   }
+  
   if (q->recv_callback(q->stream, ptr, q->frame_len - q->next_rf_sample_offset, &q->last_timestamp) < 0) {
     return SRSLTE_ERROR;
   }
@@ -721,6 +722,7 @@ int srslte_ue_sync_zerocopy_multi(srslte_ue_sync_t *q, cf_t *input_buffer[SRSLTE
         return SRSLTE_ERROR;
       }
       int n;
+
       switch (q->state) {
         case SF_FIND:
           // Correct CFO before PSS/SSS find using the sync object corrector (initialized for 1 ms)
