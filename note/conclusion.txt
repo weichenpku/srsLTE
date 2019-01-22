@@ -1,0 +1,11 @@
+./cell_search -b 3  #search cell in FDD band 3
+info: carrier frequency, EARFCN, cellid, PRB, antenna ports, PSS POWER
+
+./usrp_capture -f 1867500000 -o tmp.bin -n 1	#store IQ data according to sample num
+default values: mintime=5ms, freq=0.96MHz, #_of_samples=4800
+
+./usrp_capture_sync -l 1 -f 1867500000 -o tmp_sync.bin -n 3	#store IQ data according to frame num
+filesize = 8 bytes/sample(complex float) *  1920 samples/subframe * 3 subframes * #_of_antennas
+1920 samples/subframe * # of subframes = samplerate * time 
+Sample store: Ia1 Qa1 Ib1 Qb1 Ia2 Qa2 Ib2 Qb2...  
+receving signals through port A_RX2,B_RX2 

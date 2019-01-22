@@ -1,0 +1,102 @@
+yunsdr_api.c	yunsdr_set_rx_rf_gain
+
+rf_yunsdr_imp.c	rf_yunsdr_set_rx_srate
+
+rf_dev.h	available_devices = dev_yunsdr (rf.h srslte_rf_set_rx_srate)
+
+rf_imp.c	srslte_rf_set_rx_gain_th
+
+1.examples
+2.radio/radio.cc		
+----------------------------------------------------------------------------
+
+run uhd: 
+/opt/work/uhd/host/build/utils/uhd_usrp_probe
+
+
+sudo ./cell_search -b 3
+
+Found 8 cells
+Found CELL 1824.7 MHz, EARFCN=1397, PHYID=2, 50 PRB, 4 ports, PSS power=-37.3 dBm
+Found CELL 1825.0 MHz, EARFCN=1400, PHYID=497, 50 PRB, 2 ports, PSS power=-32.8 dBm
+Found CELL 1849.9 MHz, EARFCN=1649, PHYID=2, 150 PRB, 1 ports, PSS power=-14.8 dBm
+Found CELL 1850.0 MHz, EARFCN=1650, PHYID=23, 100 PRB, 2 ports, PSS power=-11.4 dBm
+Found CELL 1850.2 MHz, EARFCN=1652, PHYID=2, 75 PRB, 1 ports, PSS power=-15.0 dBm
+Found CELL 1867.5 MHz, EARFCN=1825, PHYID=253, 75 PRB, 2 ports, PSS power=-15.8 dBm
+Found CELL 1867.5 MHz, EARFCN=1825, PHYID=251, 75 PRB, 2 ports, PSS power=-23.1 dBm
+Found CELL 1867.7 MHz, EARFCN=1827, PHYID=1, 100 PRB, 1 ports, PSS power=-18.3 dBm
+
+=>
+
+sudo ./usrp_capture -f 1867500000 -o tmp.bin -n 1
+
+Set RX freq: 1867.50 MHz
+Set RX gain: 40.00 dB
+Correctly RX rate: 0.96 MHz
+Ok - wrote 4800 samples 
+
+=> 
+
+sudo ./usrp_capture_sync -l 1 -f 1867500000 -o tmp_sync.bin -n 3
+
+Setting sampling rate 1.92 MHz
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1554 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+!!!!Receive 1920 samples
+Writing to file      0 subframes...
+1920 1
+!!!!Receive 1920 samples
+Writing to file      1 subframes...
+1920 1
+!!!!Receive 1920 samples
+Writing to file      2 subframes...
+1920 1
+Ok - wrote 3 subframes
+
+=>
+sudo ./usrp_capture_sync -l 1 -f 1867500000 -o tmp_sync1.bin -n 20
+sudo ./usrp_capture_sync -l 253 -f 1867500000 -o tmp_sync2.bin -n 20
+sudo ./usrp_capture_sync -l 2 -f 1867700000 -o tmp_sync3.bin -n 40
+sudo ./usrp_capture_sync -l 251 -f 1867500000 -o tmp_sync4.bin -n 40
+sudo ./usrp_capture_sync -l 2 -f 1867700000 -o tmp_sync5.bin -n 40
+
+====================================================================================
+sudo ./cell_search -b 3 -s 1820 -e 1830
+Found 2 cells
+Found CELL 1867.5 MHz, EARFCN=1825, PHYID=253, 75 PRB, 2 ports, PSS power=-19.5 dBm
+Found CELL 1867.7 MHz, EARFCN=1827, PHYID=125, 150 PRB, 1 ports, PSS power=-23.9 dBm
+
+sudo ./usrp_capture_sync -l 253 -f 1867500000 -o data_sync1.bin -n 40
+sudo ./usrp_capture_sync -l 253 -f 1867500000 -o data_sync2.bin -n 40
+sudo ./usrp_capture_sync -l 125 -f 1867700000 -o data_sync3.bin -n 40
+sudo ./usrp_capture_sync -l 125 -f 1867700000 -o data_sync4.bin -n 40
+====================================================================================
+//test two antennas
+Found 2 cells
+Found CELL 1867.5 MHz, EARFCN=1825, PHYID=253, 75 PRB, 2 ports, PSS power=-16.8 dBm
+Found CELL 1867.5 MHz, EARFCN=1825, PHYID=251, 75 PRB, 2 ports, PSS power=-18.9 dBm
+
+sudo ./usrp_capture_sync -l 253 -f 1867500000 -o data_sync5.bin -n 40 -A 2
+sudo ./usrp_capture_sync -l 251 -f 1867500000 -o data_sync6.bin -n 40 -A 2
+sudo ./usrp_capture_sync -l 251 -f 1867500000 -o data_sync7.bin -n 40 -A 2 -p 75
+sudo ./usrp_capture_sync -l 251 -f 1867500000 -o data_sync8.bin -n 40 -p 75
+sudo ./usrp_capture_sync -l 251 -f 1867500000 -o data_sync9.bin -n 40 -A 2
+====================================================================================
+size of each sample = 8 Bytes (complex float)
+size of each subframe =  15360 Bytes = 1920 samples 
+	when sampling rate=1.92MHz,  t=1ms
+
