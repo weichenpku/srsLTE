@@ -513,7 +513,9 @@ int main(int argc, char **argv) {
 
   printf("All the subframes finished\n");
   printf("plot cfo for %d samples\n",cfo_num);
+#ifndef DISABLE_GRAPHICS
   do_plots_cfo(cfo_list,cfo_num);
+#endif  
   getchar();
 
   srslte_pss_free(&pss);
