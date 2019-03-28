@@ -49,14 +49,14 @@ bool disable_plots = false;
 char *input_file_name;
 int cell_id = -1;
 int nof_ports = 1;
-int nof_frames = -1;
+int nof_frames = 1;
 uint32_t fft_size=64;
 float threshold = 0.4; 
 int N_id_2_sync = -1;
 srslte_cp_t cp=SRSLTE_CP_NORM;
 int file_offset = 0; 
 bool use_standard_symbol_size = false;
-float force_cfo = 2560.0/15000; // cfo caused by hardware is about +2543Hz
+float force_cfo = 0; //2560.0/15000 cfo caused by hardware is about +2543Hz
 bool wait_for_char = false;
 float rx_gain_offset = 70; //max gain of usrp
 
@@ -169,6 +169,7 @@ int main(int argc, char **argv) {
     init_plots();
 #endif
 
+
   cfo_list = malloc(sizeof(float) * nof_frames);
 
   flen = fft_size*15*5;
@@ -225,18 +226,19 @@ int main(int argc, char **argv) {
   
   //sample to symbol
   cf_t *input_subframe;
-  int input_len = fft_size * 15;
+  int input_len = fft_size * 15; //input_len is equal to subframe_len
   int input_pointer = 0;
   input_subframe = malloc(sizeof(cf_t) * fft_size * 15); //flen = fft_size*15*5;
   
   int nof_prb = srslte_nof_prb(fft_size);
   int sf_re = SRSLTE_SF_LEN_RE(nof_prb, cp);
+  INFO("Size of one symbol is %d\n",(int)sizeof(cf_t));
+  INFO("PRB is %d, samples_num of one subframe is %d, rb per subframe is %d\n", nof_prb, input_len ,sf_re);
   cf_t *sf_symbols = srslte_vec_malloc(sf_re * sizeof(cf_t));
-  srslte_ofdm_t fft; 
-  printf("Samples_num is %d, symbol_num is %d\n", input_len ,sf_re);
+  cf_t *ce = srslte_vec_malloc(sizeof(cf_t) * sf_re);
+  srslte_ofdm_t fft;
   srslte_ofdm_rx_init(&fft, cp, input_subframe, sf_symbols, nof_prb);
-
-
+   
 
   n = srslte_filesource_read(&fsrc, buffer, file_offset);
   
@@ -248,7 +250,7 @@ int main(int argc, char **argv) {
     }
     */
     n = srslte_filesource_read(&fsrc, buffer, flen - peak_offset);
-    printf("Reading %d samples\n",n);
+    printf("Reading %d samples\n",n); //n suppose to be 5*subframe_len
     if (n < 0) {
       fprintf(stderr, "Error reading samples\n");
       exit(-1);
@@ -325,13 +327,16 @@ int main(int argc, char **argv) {
         if (peak_idx > 2*(fft_size + SRSLTE_CP_LEN_EXT(fft_size))) {
           srslte_cp_t cp = srslte_sync_detect_cp(&ssync, buffer, peak_idx);
           if (SRSLTE_CP_ISNORM(cp)) {
+            INFO("cp is norm\n");
             cp_is_norm++; 
           }       
+          else INFO("cp is extential\n");
         }
         
       } else {
         INFO("No space for CFO computation. Frame starts at \n");
       }
+      
       
       if(srslte_sss_subframe(m0,m1) == 0)
       {
@@ -353,13 +358,13 @@ int main(int argc, char **argv) {
         nof_nopeak++;                  
       } 
     }
-
+ 
     //cfo list store
     if (N_id_1_partial == N_id_1){
+      
       cfo_list[cfo_num] = (cfo - force_cfo)*15*1000;
       cfo_num++;
     }
-
 
     if (peak_value >= threshold && N_id_1_partial == N_id_1 && N_id_1_diff == N_id_1 && N_id_1_full == N_id_1){
       printf("Captured right cell\n");
@@ -367,10 +372,10 @@ int main(int argc, char **argv) {
     else{
       printf("Captured cell_id is %d\n",N_id_1_partial*3+N_id_2);
     }
-
+    
     frame_cnt++;
     
-    if (peak_value>threshold){
+    if (peak_value>threshold){  // show pss/sss detection result
       printf("[%5d]: Pos: %5d, PSR: %4.1f (~%4.1f) Pdet: %4.2f, "
            "FA: %4.2f, CFO: %+4f Hz (~%4f Hz), Abs_CFO: %+4f Hz (~%4f Hz), SSSmiss: %4.2f/%4.2f/%4.2f CPNorm: %.0f%%\r", 
            frame_cnt, 
@@ -386,16 +391,15 @@ int main(int argc, char **argv) {
       printf("\n");
     }
 
-    if (peak_value>threshold){
+    if (peak_value>threshold){  //cutting subframes
       float rssi_utra=0,rssi=0, rsrp=0, rsrq=0, snr=0, rfcfo=0;
-      //n = srslte_filesource_read(&fsrc, buffer, flen - peak_offset)
       int bound = peak_idx-round(peak_idx/input_len)*input_len;
+      int sfid = (int)(round(srslte_sss_subframe(m0, m1))-round(peak_idx/input_len)+10)%10;
+      //buffer[bound] is the start of frame (sfid)
       int last_bound = 0;
-      int sfid = srslte_sss_subframe(m0, m1)-round(peak_idx/input_len)+10;
-      sfid=sfid%10;
-      while(last_bound < n){
+
+      while(last_bound < n){ //n is the len of buffer
         int cp_num = ((bound<n)?bound:n)-last_bound;
-        //printf("%d %d %d %d\n",input_pointer+cp_num,last_bound+cp_num,input_len,flen);
         if (input_pointer+cp_num>input_len){
           memcpy(input_subframe+input_pointer,buffer+last_bound,sizeof(cf_t)*(input_len-input_pointer));
         }
@@ -404,32 +408,33 @@ int main(int argc, char **argv) {
         }
         input_pointer += cp_num;
         //printf("Copy num is %d\n",cp_num);
-        //printf("Choose samples from %d to %d,n is %d, bound is %d, input_pointer is %d\n",last_bound,(n<bound)?n:bound,n,bound,input_pointer);
+
         if (bound>=n){
           break;
         }
         if (input_pointer<input_len-10){
-          printf("Discard %d samples\n",input_pointer); 
+          printf("(%5d) Discard %d/%d samples of the incomplete subframe\n",sfid,input_pointer,input_len); 
           last_bound = bound; 
           bound += input_len;
           input_pointer = 0;
-          continue;
+          continue; //reinitial
         }
         
         //*****************************
         //Symbol analysis for a subframe
         //*****************************
-        printf("Deal with input buffer of %d for subframe %d\n", input_pointer,sfid);
+        printf("(%5d) Deal with input buffer of %d for subframe %d\n", sfid, input_pointer,sfid);
         
+        //remain the first symbol of all the 14 symbols
+        int len_symbol0 = (int)(fft_size*160/2048.0f)+fft_size;
+        int len_symbol1 = (int)(fft_size*144/2048.0f)+fft_size;
+        //for (int i=0;i<input_len-len_symbol1;i++) input_subframe[i]=0;
+        //for (int i=len_symbol0+len_symbol1;i<input_len;i++) input_subframe[i]=0;
+        //INFO("len_symbol0:%d,input_len:%d,sf_re:%d\n",len_symbol0,input_len,sf_re);
 
-        srslte_ofdm_rx_sf(&fft); //change (input_subframe) in time domain to (sf_symbol) in frequency domain
-        /*
-        for (int i=0;i<100;i++){
-          //input_subframe[i]=1000*input_subframe[i];
-          printf("%f+i*%f\n", (__real__ sf_symbols[i]),(__imag__ sf_symbols[i]));
-          //printf("%f+i*%f\n", (__real__ input_subframe[i]),(__imag__ input_subframe[i]));
-        }
-        */
+        //INFO("cp is norm:%d,nof_prb:%d\n",SRSLTE_CP_ISNORM(cp),nof_prb);
+        srslte_ofdm_rx_sf(&fft); // input_subframe <=> sf_symbol
+        //change (input_subframe) in time domain to (sf_symbol) in frequency domain
         
         srslte_cell_t cell;
         cell.nof_prb = srslte_nof_prb(fft_size);
@@ -438,7 +443,6 @@ int main(int argc, char **argv) {
         cell.id = cell_id;
         
         sf_re = SRSLTE_SF_LEN_RE(nof_prb, cp);
-        cf_t *ce = srslte_vec_malloc(sizeof(cf_t) * sf_re);
         srslte_chest_dl_t chest;
         srslte_chest_dl_init(&chest, cell.nof_prb);
         srslte_chest_dl_set_cell(&chest, cell);
@@ -469,31 +473,28 @@ int main(int argc, char **argv) {
                 10*log10(rsrq), 10*log10(snr), rfcfo*15*1000); 
 
 
-
+        
         //*****************
         //data save
         //*****************
         
+        
         FILE* fd;
-        char* chestinfo = "data/chestinfo.csv";
+        char* chestinfo = "/home/soar/srs/data/chestinfo.csv";
         fd=fopen(chestinfo,"a");
-        for (int i=0;i<nof_prb*12;i++){
-          for (int j=0;j<sf_re/(nof_prb*12);j++){
+        for (int i=0;i<sf_re/(nof_prb*12);i++){
+          for (int j=0;j<(nof_prb*12);j++){
             //printf("idx %d\n",i*sf_re/nof_prb+j);
-            fprintf(fd, "%f+i*%f,", (__real__ ce[i*sf_re/(nof_prb*12)+j]), (__imag__ ce[i*sf_re/(nof_prb*12)+j]));
+            //fprintf(fd, "%f+i*%f,", (__real__ sf_symbols[i*(nof_prb*12)+j]), (__imag__ sf_symbols[i*(nof_prb*12)+j]));
+            fprintf(fd, "%f+i*%f,", (__real__ ce[i*(nof_prb*12)+j]), (__imag__ ce[i*(nof_prb*12)+j]));
           }
           fprintf(fd, "\n");
         }
         
-        /*
-        fprintf(fd,"%f,%f,%f,%f,%f,%f\n",
-                10*log10(rssi) - rx_gain_offset,                        
-                10*log10(rssi_utra)- rx_gain_offset, 
-                10*log10(rsrp) - rx_gain_offset, 
-                10*log10(rsrq), 10*log10(snr), rfcfo*15*1000); 
-        */
+ 
         fclose(fd);
-        free(ce);
+        
+        return 0;
       }
       //printf("Reading next 5 subframes, input buffer has %d samples\n",input_pointer);
     }
@@ -510,6 +511,8 @@ int main(int argc, char **argv) {
     }
     last_peak = peak_idx;
   }
+  //frame_cnt == nof_frames
+
 
   printf("All the subframes finished\n");
   printf("plot cfo for %d samples\n",cfo_num);

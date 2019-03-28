@@ -34,6 +34,8 @@
 #include "srslte/phy/common/phy_common.h"
 #include "srslte/phy/common/sequence.h"
 
+//#define FORCE_STANDARD_RATE
+ 
 #ifdef FORCE_STANDARD_RATE
 static bool use_standard_rates = true; 
 #else 

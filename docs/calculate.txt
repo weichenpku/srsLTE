@@ -1,0 +1,8 @@
+1. filesize
+
+filesize = 	8 bytes/sample (complex float) * 
+		samples/subframe (fftsize*15) * 
+		# of subframes *
+		# of rx antennas 
+
+2.
