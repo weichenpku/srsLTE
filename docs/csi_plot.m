@@ -46,3 +46,4 @@ figure; plot(x,fftshift(abs(PDP))); title('PDP');
 DS = fft(CIR,[],2); % CIR time, spead freq
 y=linspace(-14000/2,14000/2,h_shape(2));
 figure; mesh(y,x,abs(fftshift(fftshift(DS,1),2))); title('Doppler Spread');
+
