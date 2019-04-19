@@ -106,7 +106,7 @@ char* rf_soapy_devname(void* h)
 bool rf_soapy_rx_wait_lo_locked(void *h)
 {
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*)h;
-  char *ret = SoapySDRDevice_readChannelSensor(handler->device, SOAPY_SDR_RX, handler->rx_antnum, "lo_locked");
+  char *ret = SoapySDRDevice_readChannelSensor(handler->device, SOAPY_SDR_RX, 0, "lo_locked");
   if (ret != NULL) {
     return (strcmp(ret, "true") == 0 ? true : false);
   }
@@ -275,7 +275,7 @@ int rf_soapy_open_multi(char *args, void **h, uint32_t nof_rx_antennas)
   }
 
   // list channel sensors
-  sensors = SoapySDRDevice_listChannelSensors(handler->device, SOAPY_SDR_RX, handler->rx_antnum, &sensor_length);
+  sensors = SoapySDRDevice_listChannelSensors(handler->device, SOAPY_SDR_RX, 0, &sensor_length);
   printf("Available sensors for RX channel 0: \n");
   for(int i = 0; i < sensor_length; i++) {
     printf(" - %s\n", sensors[i]);
@@ -333,11 +333,13 @@ bool rf_soapy_is_master_clock_dynamic(void *h)
 double rf_soapy_set_rx_srate(void *h, double rate)
 {
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*) h;
-  if (SoapySDRDevice_setSampleRate(handler->device, SOAPY_SDR_RX, handler->rx_antnum, rate) != 0) {
-    printf("setSampleRate Rx fail: %s\n", SoapySDRDevice_lastError());
-    return SRSLTE_ERROR;
+  for (int i=0;i<handler->rx_antnum;i++){ 
+    if (SoapySDRDevice_setSampleRate(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], rate) != 0) {
+      printf("setSampleRate Rx fail: %s\n", SoapySDRDevice_lastError());
+      return SRSLTE_ERROR;
+    }
   }
-  return SoapySDRDevice_getSampleRate(handler->device, SOAPY_SDR_RX, handler->rx_antnum);
+  return SoapySDRDevice_getSampleRate(handler->device, SOAPY_SDR_RX, handler->rx_ants[0]);
 }
 
 double rf_soapy_set_tx_srate(void *h, double rate)
@@ -354,10 +356,12 @@ double rf_soapy_set_tx_srate(void *h, double rate)
 double rf_soapy_set_rx_gain(void *h, double gain)
 {
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*) h;
-  if (SoapySDRDevice_setGain(handler->device, SOAPY_SDR_RX, handler->rx_antnum, gain) != 0)
-  {
-    printf("setGain fail: %s\n", SoapySDRDevice_lastError());
-    return SRSLTE_ERROR;
+  for (int i=0;i<handler->rx_antnum;i++){ 
+    if (SoapySDRDevice_setGain(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], gain) != 0)
+    {
+      printf("setGain fail: %s\n", SoapySDRDevice_lastError());
+      return SRSLTE_ERROR;
+    }
   }
   double retgain = rf_soapy_get_rx_gain(h);
   printf("setGain succeed: %f\n",retgain);
@@ -394,15 +398,19 @@ double rf_soapy_get_tx_gain(void *h)
 double rf_soapy_set_rx_freq(void *h, double freq)
 {
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*) h;
-  if (SoapySDRDevice_setFrequency(handler->device, SOAPY_SDR_RX, handler->rx_antnum, freq, NULL) != 0)
-  {
-    printf("setFrequency fail: %s\n", SoapySDRDevice_lastError());
-    return SRSLTE_ERROR;
+  for (int i=0;i<handler->rx_antnum;i++){ 
+    if (SoapySDRDevice_setFrequency(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], freq, NULL) != 0)
+    {
+      printf("setFrequency fail: %s\n", SoapySDRDevice_lastError());
+      return SRSLTE_ERROR;
+    }
   }
 
   // Todo: expose antenna setting
-  if (SoapySDRDevice_setAntenna(handler->device, SOAPY_SDR_RX, handler->rx_antnum, "TRX") != 0) { //default: "LNAH"
-    fprintf(stderr, "Failed to set Rx antenna.\n");
+  for (int i=0;i<handler->rx_antnum;i++){ 
+    if (SoapySDRDevice_setAntenna(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], "TRX") != 0) { //default: "LNAH"
+      fprintf(stderr, "Failed to set Rx antenna.\n");
+    }
   }
 
   char *ant = SoapySDRDevice_getAntenna(handler->device, SOAPY_SDR_RX, 0);
@@ -450,7 +458,7 @@ int  rf_soapy_recv_with_time_multi(void *h,
 {
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*) h;
   int flags; //flags set by receive operation
-  int num_channels = 1; // temp
+  int num_channels = handler->rx_antnum; // temp
   const long timeoutUs = 1000000; // arbitrarily chosen
   
   int trials = 0;
