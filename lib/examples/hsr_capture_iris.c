@@ -308,10 +308,10 @@ int main(int argc, char **argv) {
     
     //start receiving
     go_exit=false;
-    cf_t *buffer[SRSLTE_MAX_PORTS];
+    cf_t *buffer[nof_rx_antennas];
     int sample_count, n;
     srslte_rf_t rf;
-    srslte_filesink_t sink[SRSLTE_MAX_PORTS];
+    srslte_filesink_t sink[nof_rx_antennas];
     uint32_t buflen;
 
     
@@ -406,6 +406,7 @@ int main(int argc, char **argv) {
           && keep_running){
      
       n = srslte_rf_recv_with_time_multi(&rf, (void**) buffer, buflen, true, NULL, NULL);
+      printf("receive data succeed\n");
       if (n < 0) {
         fprintf(stderr, "Error receiving samples\n");
         exit(-1);

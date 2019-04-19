@@ -238,7 +238,7 @@ int rf_soapy_open_multi(char *args, void **h, uint32_t nof_rx_antennas)
   
   // create handler
   int devnum = 0;
-  h = NULL;
+  *h = NULL;
   rf_soapy_handler_t * last_handler = NULL;
   while (devnum*2<nof_rx_antennas){
     printf("********************************\n");
@@ -251,7 +251,7 @@ int rf_soapy_open_multi(char *args, void **h, uint32_t nof_rx_antennas)
 
     rf_soapy_handler_t *handler = (rf_soapy_handler_t*) malloc(sizeof(rf_soapy_handler_t));
     bzero(handler, sizeof(rf_soapy_handler_t));
-    if (h==NULL)  *h = handler;  else  last_handler->next = handler;
+    if (*h==NULL)  *h = handler;  else  last_handler->next = handler;
     last_handler = handler;
 
     handler->device = sdr;
@@ -302,6 +302,7 @@ int rf_soapy_open_multi(char *args, void **h, uint32_t nof_rx_antennas)
     }
     devnum++;
   }
+  printf("********************************\n");
   return SRSLTE_SUCCESS;
 }
 
