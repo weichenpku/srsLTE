@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
     exit(-1);
   }  
   if (!cell_detect_config.init_agc) {
+    printf("set gain: %f\n",rf_gain);
     srslte_rf_set_rx_gain(&rf, rf_gain);
   } else {
     printf("Starting AGC thread...\n");
