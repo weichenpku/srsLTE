@@ -5,8 +5,10 @@ sudo /uhd/host/build/utils/uhd_usrp_probe
 
 
 1.cell search
-sudo ./cell_search -b 3
 sudo ./cell_search -b 3 -s 1650 -e 1660
+sudo ./cell_search_iris -b 3 -s 1650 -e 1651 -g 60 -v  //commercial base station
+sudo ./cell_search_iris -b 2 -s 900 -e 901 -g 60 -v    //yunsdr base station
+
 
 2.cell capture
 sudo ./usrp_capture -o file -r rate -f freq -n frames -A antennas

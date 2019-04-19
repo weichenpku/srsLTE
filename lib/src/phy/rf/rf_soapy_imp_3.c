@@ -403,10 +403,28 @@ double rf_soapy_set_rx_gain(void *h, double gain)
   rf_soapy_handler_t *handler = (rf_soapy_handler_t*) h;
 
   for (int i=0;i<handler->rx_antnum;i++){ 
-    /*
-      double reti,retq;
-      int ret=SoapySDRDevice_getIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
-      printf("setIQBalance %d: %f+1i*%f\n",ret,reti,retq);
+    //*******************
+    //ref:IQBalance
+    //int SoapySDRDevice_getIQBalance(const SoapySDRDevice *device, const int direction, const size_t channel, double *balanceI, double *balanceQ)
+    //int SoapySDRDevice_setIQBalance(SoapySDRDevice *device, const int direction, const size_t channel, const double balanceI, const double balanceQ)
+    //*******************
+    if (SoapySDRDevice_hasIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i])==true){
+      printf("Device has iqbalance\n");
+    }
+    else{
+      printf("Device doesn't have iqbalance\n");
+    }
+    double reti=-1,retq=-1;
+    int ret=SoapySDRDevice_getIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
+    printf("getIQBalance %d: %f+1i*%f\n",ret,reti,retq);
+    ret=SoapySDRDevice_getDCOffset(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
+    printf("getDCOffset %d: %f+1i*%f\n",ret,reti,retq);
+
+    double dci=0.1;
+    double dcq=0.1;
+    SoapySDRDevice_setDCOffset(handler->device, SOAPY_SDR_RX, handler->rx_ants[i],dci,dcq);
+    printf("setDCOffset as %f+1i*%f\n",dci,dcq);
+
     double* iqbalance = rf_soapy_get_iqbalance(h,SOAPY_SDR_RX,handler->rx_ants[i]);
     printf("setIQBalance as %f+1i*%f\n",iqbalance[0],iqbalance[1]);
     if (SoapySDRDevice_setIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i],iqbalance[0],iqbalance[1])!=0)
@@ -414,11 +432,12 @@ double rf_soapy_set_rx_gain(void *h, double gain)
       printf("setIQBalance fail\n");
     }
     else{
-      double reti=1,retq=0;
-      int ret=SoapySDRDevice_getIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
-      printf("setIQBalance %d: %f+1i*%f\n",ret,reti,retq);
+      ret=SoapySDRDevice_getDCOffset(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
+      printf("getDCOffset %d: %f+1i*%f\n",ret,reti,retq);
+      ret=SoapySDRDevice_getIQBalance(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], &reti, &retq);
+      printf("getIQBalance %d: %f+1i*%f\n",ret,reti,retq);
     }
-    */
+    
     if (SoapySDRDevice_setGain(handler->device, SOAPY_SDR_RX, handler->rx_ants[i], gain) != 0)
     {
       printf("setGain fail: %s\n", SoapySDRDevice_lastError());
