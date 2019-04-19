@@ -1,0 +1,21 @@
+0.start the usrp
+sudo /uhd/host/build/utils/uhd_usrp_probe
+
+*#*#4636#*#*
+
+
+1.cell search
+sudo ./cell_search -b 3
+sudo ./cell_search -b 3 -s 1650 -e 1660
+
+2.cell capture
+sudo ./usrp_capture -o file -r rate -f freq -n frames -A antennas
+
+3.cell search & capture
+sudo ./hsr_capture -b 3 -s 1650 -e 1660 -n 10 -A 2 -g 60
+// n is the number of frames
+// save in two files
+
+4.analyze
+./hsr_sync -i cellid -f filename -s symbol_sz -n 20 -v
+// n is the number of half-frames

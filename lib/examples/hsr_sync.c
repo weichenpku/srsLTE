@@ -36,7 +36,9 @@
 #include "srslte/srslte.h"
 
 
+
 #ifndef DISABLE_GRAPHICS
+#define DISABLE_GRAPHICS
 void init_plots();
 void do_plots(float *corr, float energy, uint32_t size, cf_t pss_ce[SRSLTE_PSS_LEN]);
 void do_plots_sss(float *corr_m0, float *corr_m1);
@@ -56,7 +58,7 @@ int N_id_2_sync = -1;
 srslte_cp_t cp=SRSLTE_CP_NORM;
 int file_offset = 0; 
 bool use_standard_symbol_size = false;
-float force_cfo = 0; //2560.0/15000 cfo caused by hardware is about +2543Hz
+float force_cfo = 2560.0/15000; // cfo caused by hardware is about +2543Hz
 bool wait_for_char = false;
 float rx_gain_offset = 70; //max gain of usrp
 
@@ -149,6 +151,7 @@ int main(int argc, char **argv) {
   uint32_t nof_det, nof_nodet, nof_nopeak, nof_nopeakdet;
   cf_t pss_ce[SRSLTE_PSS_LEN]; 
 
+  int* frame_flag;
   float* cfo_list;
   int cfo_num = 0;
   
@@ -171,6 +174,7 @@ int main(int argc, char **argv) {
 
 
   cfo_list = malloc(sizeof(float) * nof_frames);
+  frame_flag = malloc(sizeof(int) * nof_frames);
 
   flen = fft_size*15*5;
 
@@ -243,14 +247,8 @@ int main(int argc, char **argv) {
   n = srslte_filesource_read(&fsrc, buffer, file_offset);
   
   while(frame_cnt < nof_frames || nof_frames == -1) {
-    /*
-    n = srslte_filesource_read(&fsrc, buffer, 2*(flen - peak_offset));
-    for (int i=0;i<flen - peak_offset;i++){
-      buffer[i]=buffer[2*i];
-    }
-    */
     n = srslte_filesource_read(&fsrc, buffer, flen - peak_offset);
-    printf("Reading %d samples\n",n); //n suppose to be 5*subframe_len
+    INFO("Reading %d samples\n",n); //n suppose to be 5*subframe_len
     if (n < 0) {
       fprintf(stderr, "Error reading samples\n");
       exit(-1);
@@ -283,7 +281,8 @@ int main(int argc, char **argv) {
         mean_abs_cfo = SRSLTE_VEC_CMA(fabs(cfo - force_cfo), mean_abs_cfo, frame_cnt);
 
         // Correct CFO
-        srslte_cfo_correct(&cfocorr, buffer, buffer, -mean_cfo / fft_size);               
+        float correct_cfo = -mean_cfo;
+        srslte_cfo_correct(&cfocorr, buffer, buffer, correct_cfo / fft_size);               
 
         // Estimate channel
         if (srslte_pss_chest(&pss, &buffer[peak_idx-fft_size], pss_ce)) {
@@ -368,9 +367,13 @@ int main(int argc, char **argv) {
 
     if (peak_value >= threshold && N_id_1_partial == N_id_1 && N_id_1_diff == N_id_1 && N_id_1_full == N_id_1){
       printf("Captured right cell\n");
+      frame_flag[frame_cnt]=1;
     }
     else{
-      printf("Captured cell_id is %d\n",N_id_1_partial*3+N_id_2);
+      printf("Captured cell_id is %d,%d,%d\n",N_id_1_partial*3+N_id_2,N_id_1_diff*3+N_id_2,N_id_1_full*3+N_id_2);
+      frame_flag[frame_cnt]=0;
+      frame_cnt++;
+      continue;
     }
     
     frame_cnt++;
@@ -382,7 +385,9 @@ int main(int argc, char **argv) {
            peak_idx - flen/10, 
            peak_value, mean_peak,
            (float) nof_det/frame_cnt, 
-           (float) nof_nopeakdet/frame_cnt, (cfo - force_cfo)*15*1000, (mean_cfo - force_cfo)*15*1000, fabs(cfo - force_cfo)*15*1000, mean_abs_cfo*15*1000,
+           (float) nof_nopeakdet/frame_cnt, 
+           (cfo - force_cfo)*15*1000, (mean_cfo - force_cfo)*15*1000, 
+           fabs(cfo - force_cfo)*15*1000, mean_abs_cfo*15*1000,
            (float) sss_error1/nof_det,(float) sss_error2/nof_det,(float) sss_error3/nof_det,
            (float) cp_is_norm/nof_det * 100);
     }
@@ -428,11 +433,8 @@ int main(int argc, char **argv) {
         //remain the first symbol of all the 14 symbols
         int len_symbol0 = (int)(fft_size*160/2048.0f)+fft_size;
         int len_symbol1 = (int)(fft_size*144/2048.0f)+fft_size;
-        //for (int i=0;i<input_len-len_symbol1;i++) input_subframe[i]=0;
-        //for (int i=len_symbol0+len_symbol1;i<input_len;i++) input_subframe[i]=0;
-        //INFO("len_symbol0:%d,input_len:%d,sf_re:%d\n",len_symbol0,input_len,sf_re);
+        //for (int i=len_symbol0+len_symbol1;i<input_len;i++) printf("%f+1i*%f\n",(__real__ input_subframe[i]),(__imag__ input_subframe[i]));
 
-        //INFO("cp is norm:%d,nof_prb:%d\n",SRSLTE_CP_ISNORM(cp),nof_prb);
         srslte_ofdm_rx_sf(&fft); // input_subframe <=> sf_symbol
         //change (input_subframe) in time domain to (sf_symbol) in frequency domain
         
@@ -477,24 +479,20 @@ int main(int argc, char **argv) {
         //*****************
         //data save
         //*****************
-        
-        
+              
         FILE* fd;
-        char* chestinfo = "/home/soar/srs/data/chestinfo.csv";
+        char* chestinfo = "/home/soar/chestinfo.csv";
         fd=fopen(chestinfo,"a");
         for (int i=0;i<sf_re/(nof_prb*12);i++){
           for (int j=0;j<(nof_prb*12);j++){
             //printf("idx %d\n",i*sf_re/nof_prb+j);
             //fprintf(fd, "%f+i*%f,", (__real__ sf_symbols[i*(nof_prb*12)+j]), (__imag__ sf_symbols[i*(nof_prb*12)+j]));
-            fprintf(fd, "%f+i*%f,", (__real__ ce[i*(nof_prb*12)+j]), (__imag__ ce[i*(nof_prb*12)+j]));
+            fprintf(fd, "%f,%f,", (__real__ ce[i*(nof_prb*12)+j]), (__imag__ ce[i*(nof_prb*12)+j]));
           }
           fprintf(fd, "\n");
         }
-        
- 
         fclose(fd);
-        
-        return 0;
+        INFO("save csi in %s\n",chestinfo);
       }
       //printf("Reading next 5 subframes, input buffer has %d samples\n",input_pointer);
     }
@@ -515,7 +513,12 @@ int main(int argc, char **argv) {
 
 
   printf("All the subframes finished\n");
-  printf("plot cfo for %d samples\n",cfo_num);
+  //printf("plot cfo for %d samples\n",cfo_num);
+  for (int i=0;i<nof_frames;i++) printf("%d ",frame_flag[i]);
+  printf("\n");
+
+  for (int i=0;i<cfo_num;i++) printf("%f\n",cfo_list[i]);
+
 #ifndef DISABLE_GRAPHICS
   do_plots_cfo(cfo_list,cfo_num);
 #endif  

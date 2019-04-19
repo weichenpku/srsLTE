@@ -44,8 +44,8 @@
 #define FLEN            9600
 #define FLEN_PERIOD     0.005
 #define MAX_EARFCN 1000
-//char * path="/media/soar/My Passport/data/8.18.1";
-char * path="data/8.18.1";
+char * path="/media/soar/My Passport/data/tmp";
+//char * path="data/8.18.1";
 char * output_file_name = NULL;
 
 int band = -1;
@@ -178,7 +178,6 @@ void cell_search(){
   uint32_t freq;
   n_found_cells=0;
 
-    
   printf("Opening RF device...\n");
   if (srslte_rf_open(&rf, rf_args)) {
     fprintf(stderr, "Error opening rf\n");
@@ -195,7 +194,8 @@ void cell_search(){
     srslte_rf_set_rx_gain(&rf, 50);      
   }
 
-  srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
+  srslte_rf_set_master_clock_rate(&rf, 80e6); //80MHz for iris
+  //srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
 
   // Supress RF messages
   srslte_rf_suppress_stdout(&rf);
@@ -315,12 +315,15 @@ int main(int argc, char **argv) {
     uint32_t buflen;
 
     
-    //usrp cannot support two rx with prb=100, thus change prb=100 to prb=75 if two rx
+    
     int real_nof_prb = results[maxcell].cell.nof_prb;
+    /*
+    //usrp cannot support two rx with prb=100, thus change prb=100 to prb=75 if two rx
     if (results[maxcell].cell.nof_prb>75 && nof_rx_antennas==2){
       printf("Downsample from prb of %d to 75\n",results[maxcell].cell.nof_prb);
       real_nof_prb = 75;
     }
+    */
     int subframe_sz = srslte_symbol_sz(real_nof_prb)*15;
     rf_rate = subframe_sz*1000;
     buflen = subframe_sz*5;  //length of 5 subframe     
@@ -341,17 +344,18 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Error opening rf\n");
       exit(-1);
     }
-
     /* master_clock_rate must be divided by sampling rate*/
+    srslte_rf_set_master_clock_rate(&rf, 80e6); //80MHz for iris
+    /*
     if (real_nof_prb == 75 || real_nof_prb <= 15){
       srslte_rf_set_master_clock_rate(&rf, 30.72e6); 
     }
     else{
       srslte_rf_set_master_clock_rate(&rf, 23.04e6);  
     }
+    */
     
-    
-    printf("Set RF rate as %f\n",rf_rate);
+    printf("Set RF rate as %.2f MHz\n",rf_rate*1e-6);
     float srate = srslte_rf_set_rx_srate(&rf, rf_rate); 
     if (srate != rf_rate) {
       if (srate < 10e6) {          
@@ -388,7 +392,10 @@ int main(int argc, char **argv) {
       char file_name[100];
       sprintf(file_name, "%s-%d.bin", output_file_name,i);
       //file_name=output_file_name;
-      srslte_filesink_init(&sink[i], file_name, SRSLTE_COMPLEX_FLOAT_BIN);
+      if (srslte_filesink_init(&sink[i], file_name, SRSLTE_COMPLEX_FLOAT_BIN)!=0){
+        printf("Open file failed\n");
+        return 0;
+      }
       printf("output_file_name_%d is:%s\n",i,file_name);
     }
     
@@ -403,6 +410,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error receiving samples\n");
         exit(-1);
       }
+      else printf("Receive %d samples\n", n);
       
       for (int i = 0; i < nof_rx_antennas; i++) {
         srslte_filesink_write_multi(&sink[i], (void**) &buffer[i], buflen, 1);

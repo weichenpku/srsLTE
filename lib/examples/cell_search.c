@@ -71,7 +71,7 @@ struct cells {
 };
 struct cells results[1024]; 
 
-float rf_gain = 30.0;
+float rf_gain = 50.0;
 char *rf_args=""; 
 
 void usage(char *prog) {
@@ -172,8 +172,10 @@ int main(int argc, char **argv) {
     }
     srslte_rf_set_rx_gain(&rf, 50);      
   }
+  
 
-  srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
+  srslte_rf_set_master_clock_rate(&rf, 80e6);        
+  //srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
 
   // Supress RF messages
   srslte_rf_suppress_stdout(&rf);
