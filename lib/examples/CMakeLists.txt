@@ -62,8 +62,11 @@ endif(SRSGUI_FOUND)
 
 if(RF_FOUND)
 
-  add_executable(cell_search cell_search.c)
-  target_link_libraries(cell_search srslte_phy srslte_rf)
+  add_executable(cell_search_iris cell_search_iris.c)
+  target_link_libraries(cell_search_iris srslte_phy srslte_rf)
+
+  add_executable(cell_search_usrp cell_search_usrp.c)
+  target_link_libraries(cell_search_usrp srslte_phy srslte_rf)
 
   add_executable(cell_measurement cell_measurement.c)
   target_link_libraries(cell_measurement srslte_phy srslte_rf)
@@ -77,8 +80,11 @@ if(RF_FOUND)
   add_executable(usrp_txrx usrp_txrx.c)
   target_link_libraries(usrp_txrx srslte_phy srslte_rf)
 
-  add_executable(hsr_capture hsr_capture.c)
-  target_link_libraries(hsr_capture srslte_phy srslte_rf)
+  add_executable(hsr_capture_iris hsr_capture_iris.c)
+  target_link_libraries(hsr_capture_iris srslte_phy srslte_rf)
+
+  add_executable(hsr_capture_usrp hsr_capture_usrp.c)
+  target_link_libraries(hsr_capture_usrp srslte_phy srslte_rf)
 
   add_executable(hsr_sync hsr_sync.c)
   target_link_libraries(hsr_sync srslte_phy srslte_rf)
